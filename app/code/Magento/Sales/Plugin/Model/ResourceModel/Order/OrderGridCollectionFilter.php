@@ -18,6 +18,11 @@ class OrderGridCollectionFilter
     private TimezoneInterface $timeZone;
 
     /**
+     * @var bool
+     */
+    private bool $isConvertingDateFilter = false;
+
+    /**
      * Timezone converter interface
      *
      * @param TimezoneInterface $timeZone
@@ -44,17 +49,18 @@ class OrderGridCollectionFilter
         $field,
         $condition = null
     ) {
+        if (!$this->isConvertingDateFilter && ($field === 'created_at' || $field === 'order_created_at')) {
+            $this->isConvertingDateFilter = true;
 
-        if ($field === 'created_at' || $field === 'order_created_at') {
             if (is_array($condition)) {
                 foreach ($condition as $key => $value) {
                     $condition[$key] = $this->timeZone->convertConfigTimeToUtc($value);
                 }
             }
 
-            $fieldName = $subject->getConnection()->quoteIdentifier($field);
-            $condition = $subject->getConnection()->prepareSqlCondition($fieldName, $condition);
-            $subject->getSelect()->where($condition, null, Select::TYPE_CONDITION);
+            $subject->addFieldToFilter($field, $condition);
+
+            $this->isConvertingDateFilter = false;
 
             return $subject;
         }
